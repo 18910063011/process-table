@@ -51,6 +51,43 @@
       location.reload();
     }
 
+    // 导出数据为JSON文件
+    function exportData() {
+      const data = getData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '进程数据_' + new Date().toLocaleDateString('zh-CN').replace(/\//g, '-') + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 导入数据
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data) && data.length > 0) {
+            if (confirm('导入将覆盖当前数据，是否继续？')) {
+              saveData(data);
+              location.reload();
+            }
+          } else {
+            alert('数据格式不正确');
+          }
+        } catch (err) {
+          alert('导入失败：' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = ''; // 清空input
+    }
+
     let isEditMode = false;
     let deleteTargetId = null;
 
@@ -60,17 +97,32 @@
 
       app.innerHTML = `
         <div class="max-w-7xl mx-auto">
-          <div class="mb-8 flex items-center justify-between">
+          <div class="mb-8 flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 class="text-3xl font-bold text-gray-900">启动应用程序</h1>
               <p class="mt-1 text-gray-600">共 ${data.length} 个进程</p>
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-3 flex-wrap">
+              ${isEditMode ? `
+                <button onclick="exportData()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  </svg>
+                  导出数据
+                </button>
+                <label class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  </svg>
+                  导入数据
+                  <input type="file" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+              ` : ''}
               <button onclick="toggleEditMode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
                 ${isEditMode ? '完成编辑' : '编辑'}
               </button>
               <button onclick="confirmReset()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors">
-                重置数据
+                重置
               </button>
             </div>
           </div>
@@ -164,6 +216,7 @@
               <div>
                 <p class="text-sm font-medium text-blue-900">数据来源</p>
                 <p class="text-sm text-blue-700">assets/启动应用程序.xlsx</p>
+                <p class="text-sm text-blue-600 mt-2">💡 编辑模式下可导出/导入数据，避免数据丢失</p>
               </div>
             </div>
           </div>
@@ -233,7 +286,7 @@
     }
 
     function confirmReset() {
-      if (confirm('确定要重置所有数据吗？这将恢复为原始数据。')) {
+      if (confirm('确定要重置所有数据吗？这将清空所有记录。')) {
         resetData();
       }
     }
